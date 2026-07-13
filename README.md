@@ -1,10 +1,7 @@
-# property-testing-skill
-
 ---
 name: property-first-testing
-description: Design tests (and the architecture they protect) by formal decomposition instead of by feature. Use when asked to write tests, design a test strategy, model a component's correctness, decide what to test, or review a test suite. Turns "write tests for X" into a workflow — decompose X into orthogonal properties, write one basis test per property proving it in isolation, then write TLA+-style span tests proving every reachable composition preserves the invariants. Counters the default failure mode where an LLM emits happy-path, data-flow, feature-shaped tests that assert outputs instead of properties.
+description: Design tests (and the architecture they protect) by formal decomposition instead of by feature. Use when asked to write tests, design a test strategy, model a component's correctness, decide what to test, or review a test suite. Turns "write tests for X" into a workflow — decompose X into orthogonal properties, write one basis test per property proving it in isolation, then write TLA+-style span tests or property testing libraries proving every reachable composition preserves the invariants. Counters the default failure mode where an LLM emits happy-path, data-flow, feature-shaped tests that assert outputs instead of properties.
 
-author: Enting Zhang
 ---
 
 # Property-First Testing
@@ -105,7 +102,7 @@ a coding step.
    an independent direction of change.
    - A change along axis 1 does not require a change along axis 2.
    - A property on axis 1 can be *stated and verified* without reference to axis 2.
-4. **Reduce to the eigen-basis.** Find the *minimal, spanning, independent* set of
+4. **Reduce to the “eigen-basis”.** Find the *minimal, spanning, independent* set of
    properties that generate all behaviors:
    - **Spanning** — every behavior is a composition of basis properties.
    - **Independent** — no basis property is derivable from the others.
@@ -158,8 +155,7 @@ Output of Phase C: one focused test per basis property.
 
 ### Phase D — Test the Span (TLA+-Style)
 
-Prove the composition. This is bounded model checking, done in whatever language
-the tests are in.
+Prove the composition. This is bounded model checking, done in whatever language or property testing libraries that fits the most. The fundamentals contains:
 
 1. **Enumerate the reachable state space.** Generate *all interleavings* of the
    action alphabet up to a bounded length (e.g. all sequences of length 1..3, plus
@@ -170,11 +166,7 @@ the tests are in.
 3. **Inject faults as first-class actions.** `crash`/`restart` is just another
    action in the alphabet. After it, assert the recovery invariant (state restored,
    nothing lost, nothing duplicated).
-4. **Golden-master the fingerprint (optional but powerful).** Record the outcome
-   of every enumerated sequence into a checked-in baseline; on later runs, assert
-   equality. A diff in the baseline that you did not intend *is* a bug. Re-baseline
-   deliberately only when the specification changes, and review the diff.
-5. **Check the span is not too big.** Assert that *illegal* states are
+4. **Check the span is not too big.** Assert that *illegal* states are
    unreachable — the "no periodicity from monotone bases" check. If an action
    sequence reaches a state the invariant forbids, either the code or the model is
    wrong.
@@ -234,9 +226,6 @@ for seq in bounded_interleavings(ALPHABET, max_len=3):   # + removals/flaps
     for action in seq:
         state = apply(action, state)
         assert composed_invariant(state)     # checked after EVERY action
-    record(baseline, fingerprint(seq), outcome(state))    # golden master
-
-assert baseline == checked_in_baseline       # any unintended diff is a bug
 ```
 
 ### TLA+ sketch (Phase B) — the model the harness approximates
@@ -339,7 +328,7 @@ Before calling a suite done, verify:
 Mirror the architecture-refactoring split: the human does **system
 identification** (Phase A — discover the axes, name the properties); the LLM does
 **mechanical execution** (Phases C–D — generate the per-axis basis tests, write
-the permutation harness, wire the golden master). The properties named in Phase A
+the permutation harness,etc.). The properties named in Phase A
 are the specification the LLM executes against — and, not incidentally, naming
 them in the prompt activates the model's formal-methods reasoning, steering it
 away from the example-test reflex. When the human skips Phase A, the LLM has
